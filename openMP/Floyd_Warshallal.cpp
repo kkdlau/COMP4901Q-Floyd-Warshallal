@@ -23,7 +23,7 @@ void SMatrix_print(const SMatrix &m);
   printf("%s =\n", #matrix);                                                   \
   SMatrix_print(matrix);
 
-void floydWarshall(const SMatrix &m, SMatrix &output);
+void MP_floydWarshall(const SMatrix &m, SMatrix &output);
 
 int main(int argc, char **argv) {
   if (argc < 1)
@@ -41,12 +41,12 @@ int main(int argc, char **argv) {
 
   auto start = high_resolution_clock::now();
 
-  floydWarshall(input, output);
+  MP_floydWarshall(input, output);
 
   auto stop = high_resolution_clock::now();
   auto duration = duration_cast<microseconds>(stop - start);
 
-  cout << "Floyd Warshall Serial Runtime: " << (duration.count() / 1000.0)
+  cout << "Floyd Warshall openMP Runtime: " << (duration.count() / 1000.0)
        << "ms" << endl;
 
   // print_matrix(output);
@@ -87,11 +87,12 @@ void inline_vector(int *&arr, const SMatrix &m) {
   }
 }
 
-void floydWarshall(const SMatrix &m, SMatrix &output) {
+void MP_floydWarshall(const SMatrix &m, SMatrix &output) {
   int i, j, k;
   const int SIZE = m.size();
   output = m;
 
+#pragma omp parallel for collapse(3) private(k)
   for (k = 0; k < SIZE; k++) {
     for (i = 0; i < SIZE; i++) {
       for (j = 0; j < SIZE; j++) {

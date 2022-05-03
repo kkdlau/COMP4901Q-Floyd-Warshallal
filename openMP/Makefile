@@ -1,7 +1,7 @@
 BINS:= FW
 
 FW: Floyd_Warshallal.cpp
-	g++ --std=c++11 Floyd_Warshallal.cpp -o FW
+	g++ --std=c++11 -o FW -fopenmp Floyd_Warshallal.cpp
 
 case_1: $(BINS)
 	./FW case_1.txt
