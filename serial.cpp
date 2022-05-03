@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <chrono>
 #include <climits>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+using namespace std::chrono;
 
 using namespace std;
 using SMatrix = vector<vector<int>>; // Square Matrix
@@ -35,11 +37,19 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  print_matrix(input);
+  // print_matrix(input);
+
+  auto start = high_resolution_clock::now();
 
   floydWarshall(input, output);
 
-  print_matrix(output);
+  auto stop = high_resolution_clock::now();
+  auto duration = duration_cast<microseconds>(stop - start);
+
+  cout << "Floyd Warshall Serial Runtime: " << (duration.count() / 1000.0)
+       << "ms" << endl;
+
+  // print_matrix(output);
 
   return 0;
 }
