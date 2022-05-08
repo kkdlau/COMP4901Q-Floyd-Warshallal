@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
   MPI_Barrier(MPI_COMM_WORLD);
   if (RANK == 0) {
     double p_end = MPI_Wtime();
-    arr_print(input_inlined, SIZE_N);
+    // arr_print(input_inlined, SIZE_N);
     cout << "Floyd Warshall openMPI Runtime: " << ((p_end - p_start) * 1000)
          << "ms" << endl;
   }

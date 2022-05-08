@@ -92,8 +92,8 @@ void MP_floydWarshall(const SMatrix &m, SMatrix &output) {
   const int SIZE = m.size();
   output = m;
 
-#pragma omp parallel for collapse(3) private(k)
   for (k = 0; k < SIZE; k++) {
+    #pragma omp parallel for collapse(2)
     for (i = 0; i < SIZE; i++) {
       for (j = 0; j < SIZE; j++) {
         if (output[i][j] > (output[i][k] + output[k][j]) &&

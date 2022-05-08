@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
   cout << "Floyd Warshall Serial Runtime: " << (duration.count() / 1000.0)
        << "ms" << endl;
 
-  print_matrix(output);
+  // print_matrix(output);
 
   return 0;
 }
