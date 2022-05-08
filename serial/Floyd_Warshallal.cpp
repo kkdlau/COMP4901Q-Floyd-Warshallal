@@ -92,12 +92,14 @@ void floydWarshall(const SMatrix &m, SMatrix &output) {
   const int SIZE = m.size();
   output = m;
 
-  for (k = 0; k < SIZE; k++) {
+  for (k = 0; k < 1; k++) {
     for (i = 0; i < SIZE; i++) {
       for (j = 0; j < SIZE; j++) {
         if (output[i][j] > (output[i][k] + output[k][j]) &&
-            (output[k][j] <= DIST_LIMIT && output[i][k] <= DIST_LIMIT))
+            (output[k][j] <= DIST_LIMIT && output[i][k] <= DIST_LIMIT)) {
           output[i][j] = output[i][k] + output[k][j];
+          printf("at %d %d -> %d\n", i, j, output[i][j]);
+        }
       }
     }
   }

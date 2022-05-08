@@ -12,5 +12,11 @@ case_2: $(BINS)
 case_3: $(BINS)
 	mpiexec -n 9 --hostfile hostfile FW case_3.txt
 
+case_4: $(BINS)
+	mpiexec -n 9 --hostfile hostfile FW case_4.txt
+
+case_5: $(BINS)
+	mpiexec -n 9 --hostfile hostfile FW case_5.txt
+
 clean:
 	-rm FW
