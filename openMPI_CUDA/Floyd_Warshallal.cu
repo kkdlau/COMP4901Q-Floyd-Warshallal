@@ -31,11 +31,24 @@ bool fread(const string &fpath, int* SIZE_N, SMatrix& M, InlineMatrix& inlined);
 
 void arr_print(InlineMatrix arr, int row_size);
 
-void MPI_floydWarshall(SMatrix matrix);
+void Fusion_floydWarshall(SMatrix matrix);
 
 void copy_block(SMatrix matrix, int r, int c, int block_width, InlineMatrix dist);
 
-void block_wise_min(int* dist, int* A_ik, int* A_kj, const int block_width, const int k);
+
+#define CUDA_SAFE_CALL(call)                                              \
+	do {                                                                  \
+		cudaError_t err = call;                                           \
+		if (err != cudaSuccess) {                                         \
+			fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n", \
+					__FILE__, __LINE__, cudaGetErrorString(err));         \
+			exit(1);                                                      \
+		}                                                                 \
+	} while (0)
+
+const int TILE_WIDTH = 16;
+
+__global__ void blockwise_min_kernel(int* dist, int* A_ik, int* A_kj, const int row_rank, const int col_rank, const int block_width, const int k);
 
 void write_matrix(SMatrix matrix, int r, int c, int block_width, int* block);
 
@@ -85,7 +98,7 @@ int main(int argc, char **argv) {
   MPI_Comm_rank(col_comm, &col_rank);
   MPI_Comm_size(col_comm, &col_size);
 
-  MPI_floydWarshall(input_matrix);
+  Fusion_floydWarshall(input_matrix);
 
   MPI_Comm_free(&row_comm);
   MPI_Comm_free(&col_comm);
@@ -93,8 +106,8 @@ int main(int argc, char **argv) {
   MPI_Barrier(MPI_COMM_WORLD);
   if (RANK == 0) {
     double p_end = MPI_Wtime();
-    // arr_print(input_inlined, SIZE_N);
-    cout << "Floyd Warshall openMPI Runtime: " << ((p_end - p_start) * 1000) << "ms" << endl;
+    arr_print(input_inlined, SIZE_N);
+    cout << "Floyd Warshall openMPI + CUDA Runtime: " << ((p_end - p_start) * 1000) << "ms" << endl;
   }
 
   // print_matrix(output);
@@ -124,7 +137,7 @@ bool fread(const string &fpath, int *width, SMatrix& M, InlineMatrix& inlined) {
   return true;
 }
 
-void MPI_floydWarshall(SMatrix matrix) {
+void Fusion_floydWarshall(SMatrix matrix) {
   const int NUM_BLK_PER_ROWS = (int)sqrt(NUM_PROCESS);
   const int BWIDTH = SIZE_N / NUM_BLK_PER_ROWS;
 
@@ -144,8 +157,15 @@ void MPI_floydWarshall(SMatrix matrix) {
   MPI_Recv(self_buf, BSIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   MPI_Barrier(MPI_COMM_WORLD);
 
-  int* rb_buf = new int[BWIDTH * BWIDTH]{0}; // row-block buffer
-  int* cb_buf = new int[BWIDTH * BWIDTH]{0}; // column-block buffer
+  int* rb_buf = new int[BSIZE]{0}; // row-block buffer
+  int* cb_buf = new int[BSIZE]{0}; // column-block buffer
+
+  int *dcb_buf, *drb_buf, *d_self;
+  cudaMalloc(&dcb_buf, BSIZE * sizeof(int));
+  cudaMalloc(&drb_buf, BSIZE * sizeof(int));
+  cudaMalloc(&d_self, BSIZE * sizeof(int));
+  CUDA_SAFE_CALL(cudaMemcpy(d_self, self_buf, BSIZE * sizeof(int), cudaMemcpyHostToDevice));
+
   for (int k = 0; k < SIZE_N; k++) {
     // column-group send
     if ((int)(k / BWIDTH) == row_rank) {
@@ -159,7 +179,17 @@ void MPI_floydWarshall(SMatrix matrix) {
     }
     MPI_Bcast(cb_buf, BSIZE, MPI_INT, (int)(k / BWIDTH), col_comm);
 
-    block_wise_min(self_buf, cb_buf, rb_buf, BWIDTH, k);
+    CUDA_SAFE_CALL(cudaMemcpy(drb_buf, rb_buf, BSIZE * sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_SAFE_CALL(cudaMemcpy(dcb_buf, cb_buf, BSIZE * sizeof(int), cudaMemcpyHostToDevice));
+
+  	dim3 grid((int)ceil(BWIDTH * 1.0 / TILE_WIDTH),
+			        (int)ceil(BWIDTH * 1.0 / TILE_WIDTH));
+	  dim3 block(TILE_WIDTH, TILE_WIDTH);
+
+    blockwise_min_kernel<<<grid, block>>>(d_self, dcb_buf, drb_buf, row_rank, col_rank, BWIDTH, k);
+
+    CUDA_SAFE_CALL(cudaMemcpy(self_buf, d_self, BSIZE * sizeof(int), cudaMemcpyDeviceToHost));
+
     MPI_Isend(self_buf, BSIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, &req);
     if (is_master) {
       int* recv_buf = new int[BWIDTH * BWIDTH];
@@ -179,6 +209,9 @@ void MPI_floydWarshall(SMatrix matrix) {
       delete[] ptr;
     }
   }
+	cudaFree(d_self);
+	cudaFree(dcb_buf);
+	cudaFree(drb_buf);
 }
 
 
@@ -211,24 +244,31 @@ void copy_block(SMatrix matrix, int r, int c, int block_width, int* dist) {
   }
 }
 
-void block_wise_min(int* dist, int* A_ik, int* A_kj, const int block_width, const int k) {
-  int global_row_start = row_rank * block_width;
-  int global_col_start = col_rank * block_width;
-  int global_row_end = global_row_start + block_width;
-  int global_col_end = global_col_start + block_width;
+__global__ void blockwise_min_kernel(int* dist, int* A_ik, int* A_kj, const int row_rank, const int col_rank, const int block_width, const int k) {
+	int bx = blockIdx.x;
+	int by = blockIdx.y;
 
-  for(int i = global_row_start; i < global_row_end; i++) {
-    for(int j = global_col_start; j < global_col_end; j++) {
-      int& tar = dist[(i % block_width) * block_width + (j % block_width)];
-      int aik = A_ik[(i % block_width) * block_width + (k % block_width)];
-      int akj = A_kj[(k % block_width) * block_width + (j % block_width)];
-      // printf("A[%d,%d] = A[%d,%d] + A[%d,%d] <- %d = %d + %d\n", i, j, i, k, k, j, tar, aik, akj);
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
 
-      if (tar > (aik + akj) && (akj <= DIST_LIMIT && aik <= DIST_LIMIT))
-          tar = aik + akj;
+	int i = by * TILE_WIDTH + ty;
+	int j = bx * TILE_WIDTH + tx;
+
+  int prev;
+  int aik;
+  int akj;
+
+  if (i < block_width && j < block_width) {
+    prev = dist[i * block_width + j];
+    aik = A_ik[i * block_width + (k % block_width)];
+    akj = A_kj[(k % block_width) * block_width + j];
+
+    if (prev > (aik + akj) && (akj <= DIST_LIMIT && aik <= DIST_LIMIT)) {
+      dist[i * block_width + j] = aik + akj;
     }
   }
 }
+
 
 void write_matrix(SMatrix matrix, int r, int c, int block_width, int* block) {
   if (matrix == nullptr) {
