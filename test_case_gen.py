@@ -1,6 +1,6 @@
 import random
 
-matrix_size = 3 * 700
+matrix_size = 3 * 400
 DIST_LIMIT = 10000
 fname = "case_5.txt"
 
