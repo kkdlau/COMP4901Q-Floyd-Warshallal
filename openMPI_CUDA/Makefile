@@ -10,15 +10,21 @@ FW: Floyd_Warshallal.cu
 	${NVCC} ${NVCCFLAGS} ${MPI} ${LIB} --std=c++11 Floyd_Warshallal.cu -o FW
 
 case_1: $(BINS)
-	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW case_1.txt
+	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW ../case_1.txt
 case_2: $(BINS)
-	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW case_2.txt
+	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW ../case_2.txt
 case_3: $(BINS)
-	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW case_3.txt
+	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW ../case_3.txt
 case_4: $(BINS)
-	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW case_4.txt
-case_4: $(BINS)
-	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW case_5.txt
+	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW ../case_4.txt
+case_5: $(BINS)
+	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW ../case_5.txt
+case_6: $(BINS)
+	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW ../case_6.txt
+case_7: $(BINS)
+	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW ../case_7.txt
+case_8: $(BINS)
+	@mpiexec -n 9 --hostfile hostfile -x LD_LIBRARY_PATH=/usr/local/software/openmpi/lib:$LD_LIBRARY_PATH ./FW ../case_8.txt
 
 clean:
 	-rm FW

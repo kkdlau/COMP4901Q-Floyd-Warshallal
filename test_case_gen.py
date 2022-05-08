@@ -1,8 +1,8 @@
 import random
 
-matrix_size = 3 * 400
+matrix_size = 30
 DIST_LIMIT = 10000
-fname = "case_5.txt"
+fname = "case_1.txt"
 
 f = open(fname, "w")
 

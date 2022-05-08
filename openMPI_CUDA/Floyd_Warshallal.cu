@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
   MPI_Barrier(MPI_COMM_WORLD);
   if (RANK == 0) {
     double p_end = MPI_Wtime();
-    arr_print(input_inlined, SIZE_N);
+    // arr_print(input_inlined, SIZE_N);
     cout << "Floyd Warshall openMPI + CUDA Runtime: " << ((p_end - p_start) * 1000) << "ms" << endl;
   }
 
@@ -190,20 +190,21 @@ void Fusion_floydWarshall(SMatrix matrix) {
 
     CUDA_SAFE_CALL(cudaMemcpy(self_buf, d_self, BSIZE * sizeof(int), cudaMemcpyDeviceToHost));
 
-    MPI_Isend(self_buf, BSIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, &req);
-    if (is_master) {
-      int* recv_buf = new int[BWIDTH * BWIDTH];
-      for_each_block {
-        MPI_Recv(recv_buf, BSIZE, MPI_INT, r * NUM_BLK_PER_ROWS + c, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        write_matrix(matrix, r, c, BWIDTH, recv_buf);
-      }
+    // MPI_Barrier(MPI_COMM_WORLD);
+  }
+
+  MPI_Isend(self_buf, BSIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, &req);
+  if (is_master) {
+    int* recv_buf = new int[BWIDTH * BWIDTH];
+    for_each_block {
+      MPI_Recv(recv_buf, BSIZE, MPI_INT, r * NUM_BLK_PER_ROWS + c, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      write_matrix(matrix, r, c, BWIDTH, recv_buf);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
   }
 
   delete[] rb_buf;
   delete[] cb_buf;
-  delete[] self_buf;
+  // delete[] self_buf;
   if (is_master) {
     for(auto ptr: send_bufs) {
       delete[] ptr;

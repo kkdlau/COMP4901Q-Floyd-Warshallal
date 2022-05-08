@@ -88,17 +88,15 @@ void inline_vector(int *&arr, const SMatrix &m) {
 }
 
 void floydWarshall(const SMatrix &m, SMatrix &output) {
-  int i, j, k;
-  const int SIZE = m.size();
   output = m;
 
-  for (k = 0; k < 1; k++) {
-    for (i = 0; i < SIZE; i++) {
-      for (j = 0; j < SIZE; j++) {
+  for (int k = 0; k < m.size(); k++) {
+    for (int i = 0; i < m.size(); i++) {
+      for (int j = 0; j < m.size(); j++) {
         if (output[i][j] > (output[i][k] + output[k][j]) &&
             (output[k][j] <= DIST_LIMIT && output[i][k] <= DIST_LIMIT)) {
           output[i][j] = output[i][k] + output[k][j];
-          printf("at %d %d -> %d\n", i, j, output[i][j]);
+          // printf("at %d %d -> %d\n", i, j, output[i][j]);
         }
       }
     }

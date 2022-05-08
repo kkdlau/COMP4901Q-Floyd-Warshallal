@@ -18,5 +18,11 @@ case_4: $(BINS)
 case_5: $(BINS)
 	./FW ../case_5.txt
 
+case_6: $(BINS)
+	./FW ../case_6.txt
+
+case_7: $(BINS)
+	./FW ../case_7.txt
+
 clean:
 	-rm FW

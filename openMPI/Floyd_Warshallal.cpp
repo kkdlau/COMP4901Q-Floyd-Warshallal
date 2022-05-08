@@ -92,12 +92,11 @@ int main(int argc, char **argv) {
   MPI_Barrier(MPI_COMM_WORLD);
   if (RANK == 0) {
     double p_end = MPI_Wtime();
-    // arr_print(input_inlined, SIZE_N);
+    arr_print(input_inlined, SIZE_N);
     cout << "Floyd Warshall openMPI Runtime: " << ((p_end - p_start) * 1000)
          << "ms" << endl;
   }
 
-  // print_matrix(output);
   MPI_Finalize();
   return 0;
 }
@@ -144,39 +143,41 @@ void MPI_floydWarshall(SMatrix matrix) {
     }
   }
   MPI_Recv(self_buf, BSIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  // MPI_Barrier(MPI_COMM_WORLD);
 
-  int *rb_buf = new int[BWIDTH * BWIDTH]{0}; // row-block buffer
-  int *cb_buf = new int[BWIDTH * BWIDTH]{0}; // column-block buffer
+  int *rb_buf = new int[BWIDTH * BWIDTH]; // row-block buffer
+  int *cb_buf = new int[BWIDTH * BWIDTH]; // column-block buffer
   for (int k = 0; k < SIZE_N; k++) {
     // row-group send
-    if ((int)(k / BWIDTH) == row_rank) {
+    int k_group = (int)(k / BWIDTH);
+    if (k_group == row_rank) {
       memcpy(rb_buf, self_buf, BSIZE * sizeof(int));
     }
-    MPI_Bcast(rb_buf, BSIZE, MPI_INT, (int)(k / BWIDTH), row_comm);
+    MPI_Bcast(rb_buf, BSIZE, MPI_INT, k_group, row_comm);
 
     // column-group send
-    if ((int)(k / BWIDTH) == col_rank) {
+    if (k_group == col_rank) {
       memcpy(cb_buf, self_buf, BSIZE * sizeof(int));
     }
-    MPI_Bcast(cb_buf, BSIZE, MPI_INT, (int)(k / BWIDTH), col_comm);
+    MPI_Bcast(cb_buf, BSIZE, MPI_INT, k_group, col_comm);
 
     block_wise_min(self_buf, cb_buf, rb_buf, BWIDTH, k);
-    MPI_Isend(self_buf, BSIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, &req);
-    if (is_master) {
-      int *recv_buf = new int[BWIDTH * BWIDTH];
-      for_each_block {
-        MPI_Recv(recv_buf, BSIZE, MPI_INT, r * NUM_BLK_PER_ROWS + c, 0,
-                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        write_matrix(matrix, r, c, BWIDTH, recv_buf);
-      }
+    // MPI_Barrier(MPI_COMM_WORLD);
+  }
+
+  MPI_Isend(self_buf, BSIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, &req);
+  if (is_master) {
+    int *recv_buf = new int[BWIDTH * BWIDTH];
+    for_each_block {
+      MPI_Recv(recv_buf, BSIZE, MPI_INT, r * NUM_BLK_PER_ROWS + c, 0,
+                MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      write_matrix(matrix, r, c, BWIDTH, recv_buf);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
   }
 
   delete[] rb_buf;
   delete[] cb_buf;
-  delete[] self_buf;
+  // delete[] self_buf;
   if (is_master) {
     for (auto ptr : send_bufs) {
       delete[] ptr;
