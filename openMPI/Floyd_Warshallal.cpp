@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
   if (RANK == 0) {
     double p_end = MPI_Wtime();
     // arr_print(input_inlined, SIZE_N);
-    cout << "Floyd Warshall openMP Runtime: " << ((p_end - p_start) * 1000) << "ms" << endl;
+    cout << "Floyd Warshall openMPI Runtime: " << ((p_end - p_start) * 1000) << "ms" << endl;
   }
 
   // print_matrix(output);
